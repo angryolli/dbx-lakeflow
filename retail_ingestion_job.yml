@@ -1,0 +1,98 @@
+# Every occurrence of the account email is replaced with example@gmail.com.
+resources:
+  jobs:
+    retail_ingestion_job:
+      name: retail_ingestion_job
+      trigger:
+        pause_status: UNPAUSED
+        file_arrival:
+          url: /Volumes/workspace/retail_pipeline/trigger_storage_location/
+      tasks:
+        - task_key: ingest_customers
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/08_Ingest_Customers
+            source: WORKSPACE
+        - task_key: ingest_orders
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/06_Ingest_Orders
+            source: WORKSPACE
+        - task_key: customers_orders_report
+          depends_on:
+            - task_key: ingest_customers
+            - task_key: ingest_orders
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/10_Join_Customers_Orders
+            source: WORKSPACE
+        - task_key: country_orders_iterator
+          depends_on:
+            - task_key: customers_orders_report
+          for_each_task:
+            inputs: '["Finland","Sweden","Germany"]'
+            concurrency: 1
+            task:
+              task_key: country_orders_iterator_iteration
+              notebook_task:
+                notebook_path: /Workspace/Users/example@gmail.com/14_Country_Orders_Report
+                base_parameters:
+                  country: "{{input}}"
+                source: WORKSPACE
+        - task_key: ingest_sales
+          sql_task:
+            query:
+              query_id: 2d9c6a88-42d0-408d-8c6a-71d0dc73f30d
+            warehouse_id: 72db04d389a751cd
+        - task_key: customers_sales_summary
+          depends_on:
+            - task_key: ingest_customers
+            - task_key: ingest_orders
+            - task_key: ingest_sales
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/11_Join_Customers_Sales
+            source: WORKSPACE
+        - task_key: checking_for_duplicates
+          depends_on:
+            - task_key: customers_sales_summary
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.customers_sales_summary.values.has_duplicates}}"
+            right: "true"
+        - task_key: dropping_duplicate_records
+          depends_on:
+            - task_key: checking_for_duplicates
+              outcome: "true"
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/12_Remove_Duplicates
+            source: WORKSPACE
+        - task_key: transforming_country_orders
+          depends_on:
+            - task_key: country_orders_iterator
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/15_Transform_Country_Orders
+            source: WORKSPACE
+        - task_key: create_retail_summary
+          depends_on:
+            - task_key: transforming_country_orders
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/16_Retail_Summary_Gold
+            source: WORKSPACE
+        - task_key: transforming_customers_sales
+          depends_on:
+            - task_key: dropping_duplicate_records
+            - task_key: checking_for_duplicates
+              outcome: "false"
+          run_if: NONE_FAILED
+          notebook_task:
+            notebook_path: /Workspace/Users/example@gmail.com/13_Transform_Customers_Sales
+            source: WORKSPACE
+        - task_key: refreshing_retail_dashboard
+          depends_on:
+            - task_key: create_retail_summary
+          dashboard_task:
+            subscription:
+              attachment:
+                page_attachment: {}
+            warehouse_id: 72db04d389a751cd
+            dashboard_id: 01f1c59e6cd015b98da3a8656e5d5ecb
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED

@@ -13,4 +13,4 @@ Bronze tables are loaded in three ways.
 | `06_Ingest_Orders` | `ingest_orders` | `orders_bronze` |
 | `07_Ingest_Sales` | `ingest_sales` uses the saved SQL query with the same statement. | `sales_bronze` |
 
-The visualization of the whole pipeline is in the main [`README.md`](../README.md) at the root of the project.
+Notebook notes for this folder are in the [Lakeflow README](../README.md). The run pictures are in the root [README](../../README.md).

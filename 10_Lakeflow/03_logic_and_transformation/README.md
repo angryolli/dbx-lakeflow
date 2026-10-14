@@ -20,4 +20,4 @@
 
 `checking_for_duplicates` and `refreshing_retail_dashboard` (tasks / job steps) live only in the job file. The condition compares `has_duplicates` to `true`. The dashboard task refreshes dashboard `01f1c59e6cd015b98da3a8656e5d5ecb` after the retail summary.
 
-The visualization of the whole pipeline is in the main [`README.md`](../README.md) at the root of the project.
+Notebook notes for this folder are in the [Lakeflow README](../README.md). The run pictures are in the root [README](../../README.md).

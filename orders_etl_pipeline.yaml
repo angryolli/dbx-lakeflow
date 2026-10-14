@@ -1,0 +1,21 @@
+resources:
+  pipelines:
+    pipeline_orders_medallion_practice:
+      name: Orders_Medallion_Practice
+      configuration:
+        source: /Volumes/workspace/sdp_bronze/source
+      libraries:
+        - glob:
+            include: /Workspace/Users/example@gmail.com/Orders_Medallion_Practice/orders/**
+        - glob:
+            include: /Workspace/Users/example@gmail.com/Orders_Medallion_Practice/status/**
+        - glob:
+            include: /Workspace/Users/example@gmail.com/Orders_Medallion_Practice/customers/**
+      schema: sdp_bronze
+      continuous: false
+      development: false
+      photon: true
+      channel: CURRENT
+      catalog: workspace
+      serverless: true
+      root_path: /Workspace/Users/example@gmail.com/Orders_Medallion_Practice

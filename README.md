@@ -1,56 +1,37 @@
-# Retail pipeline
+# Databricks Lakeflow
 
-Databricks notebooks for the retail Lakeflow job, plus the earlier notebooks used to try catalog, volume, and ingestion patterns. The job itself is [`retail_ingestion_job.yml`](retail_ingestion_job.yml). A file landing in `/Volumes/workspace/retail_pipeline/trigger_storage_location/` starts it.
+This repo holds two separate pieces of work.
 
-Notebook paths in that file are the Databricks workspace paths (`/Workspace/Users/example@gmail.com/...`). Every occurrence of the account email is replaced with `example@gmail.com`. The folders below are the local layout.
+[`10_Lakeflow`](10_Lakeflow) is the retail Lakeflow job and the notebooks around it. The testing flows try catalog, volume, batch, schema, and JSON patterns. The job then ingests customers, orders, and sales, joins them, and writes the silver and gold tables. Everything that belongs to that job is in this folder and in [`retail_ingestion_job.yml`](retail_ingestion_job.yml).
+
+[`20_ETL_Pipeline`](20_ETL_Pipeline) is a medallion ETL pipeline for orders, order status, and customer change events. The setup notebook creates the schemas and source files. The pipeline code is under `Orders_Medallion_Practice`, and the pipeline definition is [`orders_etl_pipeline.yaml`](orders_etl_pipeline.yaml).
+
+Workspace paths in both YAML files use `example@gmail.com` in place of the account email.
 
 ## Folders
 
 | Folder | What it holds |
 | --- | --- |
-| [`01_testing_flows`](01_testing_flows) | Notebooks run by hand to try Unity Catalog, volumes, batch loads, schema changes, JSON events, and the retail schema. |
-| [`02_ingest_and_generation`](02_ingest_and_generation) | Customer file generation, and the bronze loads for customers, orders, and sales. Details are in that folder's [README](02_ingest_and_generation/README.md). |
-| [`03_logic_and_transformation`](03_logic_and_transformation) | Joins, the duplicate check, country iteration, and the silver and gold tables. Details are in that folder's [README](03_logic_and_transformation/README.md). |
+| [`10_Lakeflow`](10_Lakeflow) | Testing flows, bronze ingest, and the job's joins and transformations. Notebook notes are in that folder's [README](10_Lakeflow/README.md). |
+| [`20_ETL_Pipeline`](20_ETL_Pipeline) | `20_SETUP_OrdersMedallionPractice` plus `orders`, `status`, and `customers` pipeline SQL. How to run it is in that folder's [README](20_ETL_Pipeline/README.md). |
 
-### Testing flows
+## YAML files
 
-| Notebook | What it tries |
+| File | What it defines |
 | --- | --- |
-| `01_Unity_Catalog_and_Volumes` | Catalog, schema, volume, and a sample file. |
-| `02_Batch_Ingestion` | Batch copy and insert patterns. |
-| `03_Merging_Schemas` | Loading files when the schema changes. |
-| `04_JSON_Kafka_Events_Ingestion` | JSON event records through bronze shapes. |
-| `05_Retail_Pipeline_Setup` | `workspace.retail_pipeline`, the `orders` and `sales` tables, and `trigger_storage_location`. Run this before the job. |
+| [`retail_ingestion_job.yml`](retail_ingestion_job.yml) | The retail job. A file in `/Volumes/workspace/retail_pipeline/trigger_storage_location/` starts it. |
+| [`orders_etl_pipeline.yaml`](orders_etl_pipeline.yaml) | The `Orders_Medallion_Practice` pipeline. It reads JSON from `/Volumes/workspace/sdp_bronze/source`. |
 
-## Pipeline
+## Images
 
-The visualization of the whole pipeline is in this README, at the root of the project. This is one run of `retail_ingestion_job`. `checking_for_duplicates` is false, so `dropping_duplicate_records` is excluded and `transforming_customers_sales` still runs. Notebook paths are covered in the image.
+One run of `retail_ingestion_job`. `checking_for_duplicates` is false, so `dropping_duplicate_records` is excluded and `transforming_customers_sales` still runs. Workspace paths on the task cards are covered.
 
-![retail_ingestion_job run](images/retail_ingestion_job_run.jpg)
+![retail_ingestion_job run](images/retail_ingestion_job_run.png)
 
-```mermaid
-flowchart TD
-    setup["05 Retail pipeline setup"] --> gen["09 Generate customers"]
-    gen --> trigger["File arrival on trigger_storage_location"]
+The same run on the timeline. `dropping_duplicate_records` takes 0s because it was excluded. `refreshing_retail_dashboard` runs after `create_retail_summary`.
 
-    trigger --> customers["08 Ingest customers"]
-    trigger --> orders["06 Ingest orders"]
-    trigger --> sales["07 Ingest sales"]
+![retail_ingestion_job timeline](images/retail_ingestion_job_timeline.jpg)
 
-    customers --> ordersSilver["10 Customers and orders"]
-    orders --> ordersSilver
-    ordersSilver --> countries["14 Country report<br/>Finland, Sweden, Germany"]
-    countries --> countryGold["15 Country gold tables"]
-    countryGold --> summary["16 Retail summary gold"]
-    summary --> dashboard["Refresh retail dashboard"]
+The `Orders_Medallion_Practice` pipeline graph. Auto Loader reads JSON from the source volume into bronze streaming tables, then silver, then the gold materialized views.
 
-    customers --> salesSilver["11 Customers and sales"]
-    orders --> salesSilver
-    sales --> salesSilver
-    salesSilver --> duplicates{"Duplicates?"}
-    duplicates -->|yes| drop["12 Remove duplicates"]
-    duplicates -->|no| salesGold["13 Customers sales gold"]
-    drop --> salesGold
-```
-
-The three ingest tasks start together. Orders and sales then run as separate branches. `13_Transform_Customers_Sales` runs after the duplicate task when duplicates were found, and directly after the check when they were not (`run_if: NONE_FAILED`).
+![Orders medallion pipeline](images/orders_medallion_pipeline.png)
